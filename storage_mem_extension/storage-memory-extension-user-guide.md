@@ -1,29 +1,31 @@
-# Storage extension with DCPM Userguide
+# Storage extension with Optane PMem Userguide
 
 ## Prerequisites
 
-Before getting start with storage extension with DCPM, your machine should have Intel DCPM setup and you should have memkind being installed. For memkind installation, please refer [memkind webpage](https://github.com/memkmemkindind/).
+Before getting start with storage extension with Optane PMem, your machine should have Intel Optane PMem setup and you should have memkind being installed. For memkind installation, please refer [memkind webpage](https://github.com/memkmemkindind/).
 
-Please refer to documentation at ["Quick Start Guide: Provision Intel® Optane DC Persistent Memory"](https://software.intel.com/en-us/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux) for detailed to setup DCPM with App Direct Mode.
+Please refer to documentation at ["Quick Start Guide: Provision Intel® Optane DC Persistent Memory"](https://software.intel.com/en-us/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux) for detailed to setup Optane PMem with App Direct Mode.
 
 ## Configuration
 
-To enable block cache on Intel DCPM, you need add the following configurations:
+To enable block cache on Intel Optane PMem, you need add the following configurations:
 
-    spark.memory.aep.initial.path xxx,xxx (list DCPM paths seperate with comma)
-    spark.memory.aep.initial.size xxxG (set the initial size of DCPM)
+    spark.memory.aep.initial.path [Your Optane PMem paths seperate with comma]
+    spark.memory.aep.initial.size [Your Optane PMem size in GB]
 
-## Use DCPM to cache data
+## Use Optane PMem to cache data
 
-There's a new StorageLevel: AEP being added to cache data to DCPM, at the places you previously cache/persist data to memory, use AEP substitute the previous StorageLevel, data will be cached to DCPM.
+There's a new StorageLevel: AEP being added to cache data to Optane PMem, at the places you previously cache/persist data to memory, use AEP substitute the previous StorageLevel, data will be cached to Optane PMem.
 
     persist(StorageLevel.AEP)
 
-## Run K-means benchmark
+## Example of Run K-means benchmark
 
 You can use [Hibench](https://github.com/Intel-bigdata/HiBench) to run K-means workload:
 
-    update the places to cache data to AEP
+First need to update source code to cache data to Optane PMem, modify ${HiBench_Home}/sparkbench/ml/src/main/scala/com/intel/sparkbench/ml/DenseKMeans.scala where data being cached to memory: 
+
+    cache() => persist(StorageLevel.AEP)
 
 Run K-means workload with:
 
