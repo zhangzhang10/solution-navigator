@@ -1,5 +1,5 @@
-## Configurare HW
-   Directories exposing DCPMM hardware on each socket. For example, on a two socket system the mounted DCPMM directories should appear as /mnt/pmem0 and /mnt/pmem1. Correctly installed DCPMM must be formatted and mounted on every cluster worker node.
+## Configurare Hardware
+Directories exposing Optane PMem hardware on each socket. For example, on a two socket system the mounted DCPMM directories should appear as /mnt/pmem0 and /mnt/pmem1. Correctly installed Optane PMem must be formatted and mounted on every cluster worker node.
    
       // use impctl command to show topology and dimm info of DCPM
       impctl show -topology
@@ -23,42 +23,45 @@
       // create and mount file system
       mount -o dax /dev/pmem0 /mnt/pmem0
       mount -o dax /dev/pmem1 /mnt/pmem1
-   In this case file systems are generated for 2 numa nodes, which can be checked by "numactl --hardware". For a different number of numa nodes, a corresponding number of namespaces should be created to assure correct file system paths mapping to numa nodes.
 
-## Set Memkind
-   Memkind library installed on every cluster worker node. Use the latest Memkind version. Compile Memkind based on your system or place our pre-built binary of libmemkind.so.0 for x86 64bit CentOS Linux in the /lib64/directory of each worker node in cluster. The Memkind library depends on libnuma at the runtime, so it must already exist in the worker node system.
-    
-Build memkind lib from source:
+In this case file systems are generated for 2 numa nodes, which can be checked by "numactl --hardware". For a different number of numa nodes, a corresponding number of namespaces should be created to assure correct file system paths mapping to numa nodes.
 
-     git clone https://github.com/memkind/memkind
-     cd memkind
-     ./autogen.sh
-     ./configure
-     make
-     make install
+Please valiate Optane PMem mount in DAX mode like below. You should find **DAX** listed in mode list for each PMEM entry like below:
+
+      #mount | grep dax 
+      /dev/pmem0 on /mnt/pmem0 type ext4 (rw,relatime,dax)
+      /dev/pmem1 on /mnt/pmem1 type ext4 (rw,relatime,dax) 
+
+## Install Memkind library
+Memkind library is required to be installed on every cluster worker node. Please use the latest Memkind version. Compile Memkind based on your system.
+
+Please download Memkind from the [official website](https://github.com/memkind/memkind). Please install required dependencies list in [Memkind website](https://github.com/memkind/memkind#dependencies) and build it from source following the [instructions](https://github.com/memkind/memkind#building-and-installing)
+
+Please copy the built so under the folder.
+
+      sudo cp -r /usr/local/lib/* /lib64 
+
+Please validate your Memkind is installed properly by checking memkind is under lib64 folder.
+
+      #ls /lib64 | grep memkind*
+      libmemkind.so 
 
 # Setup Hadoop
-#### * Set-up hadoop on yarn 
-     https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html#Installing_Software
-#### * pass Benchmarking on hadoop  
-    https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/Benchmarking.html
+Please set up Hadoop following [the official website](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html#Installing_Software)
 
-# Setup Spark
-See supported Spark version in [Link] (https://github.com/Intel-bigdata/Solution_navigator/blob/master/storage_mem_extension/storage-memory-extension-user-guide.md#prerequisites)
+Please validate you installation by running [Hadoop benchmark](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/Benchmarking.html) successfully.
 
-#### * Configure  NUMA
-Install numactl to bind the executor to the DCPMM device on the same NUMA node.
- 
-      yum install numactl -y
+# Install Spark
+Please refer to the supported Spark version in [Link] (https://github.com/Intel-bigdata/Solution_navigator/blob/master/storage_mem_extension/storage-memory-extension-user-guide.md#prerequisites)
 
+# Update Spark runtime configurations
 Build Spark from source to enable numa-binding support
 
        https://github.com/Intel-bigdata/OAP/blob/branch-0.7-spark-2.4.x/docs/Developer-Guide.md#enable-numa-binding-for-dcpmm-in-spark
 
 # Setup K-means Workload
 
-## Generate raw dataset
-Download HiBench from [HiBench webpage](https://github.com/intel-hadoop/HiBench.git).
+Please download HiBench from [HiBench webpage](https://github.com/intel-hadoop/HiBench.git).
 
 Modify pom.xml under sparkbench, sparkbench/streaming and sparkbench/structuredStreaming/ folders to add support of spark2.4.
 
