@@ -1,4 +1,20 @@
-# Use Optane PMem in HiBench Kmeans workload 
+# Configure Optane PMem
+## Check security patch
+## Configurare HW
+## Set Memkind
+
+# Setup Hadoop
+[TBD]
+[Validation steps] Run hadoop hello world
+
+# Setup Spark
+See supported Spark version in [Link] (https://github.com/Intel-bigdata/Solution_navigator/blob/master/storage_mem_extension/storage-memory-extension-user-guide.md#prerequisites)
+[TBD] 
+[Validation steps]
+1. NUMA
+
+# Setup K-means Workload
+
 ## Generate raw dataset
 Download HiBench from [HiBench webpage](https://github.com/intel-hadoop/HiBench.git).
 
@@ -39,26 +55,6 @@ Specify the dateset in ${HiBench_Home}/conf/hibench.conf
 Run ${HiBench_Home}/bin/workloads/ml/kmeans/prepare/prepare.sh to generate data
 
 ## Running Spark Kmeans
-Specify configurations on how to run Kmeans workload.
+See [https://github.com/Intel-bigdata/HiBench/blob/master/docs/run-sparkbench.md] 
 
-modify ${HiBench_Home}/conf/hadoop.conf to set Hadoop to the correct directory
-
-modify ${HiBench_Home}/conf/spark.conf to specify Spark you are using and configurations:
- 
-You must set spark.memory.aep.initial.path to the place where Optane PMem is mounted.
-
-If you want to enable numa binding, please set spark.yarn.numa.enabled to true, to disable numa binding, set it to false.
-
-modify kmeans workload to cache RDD to different storage:
-
-update ${HiBench_Home}/sparkbench/ml/src/main/scala/com/intel/sparkbench/ml/DenseKMeans.scala to change like bellow:
-
-    cache() => persist(StorageLevel.AEP)
- 
-recompile HiBench to involve these changes. 
-
-Now you can choose to cache RDD to which storage level in ${HiBench_Home}/conf/workloads/ml/kmeans.conf.
- 
-And you can also change the init methodology to be random or parallel.
- 
-Run ${HiBench_Home}/bin/workloads/ml/kmeans/spark/run.sh to start spark kmeans workload
+Configure HiBench with Spark PMem storage level.
