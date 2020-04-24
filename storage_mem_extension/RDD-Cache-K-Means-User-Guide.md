@@ -1,105 +1,118 @@
-## Configurare Hardware
-Directories exposing Optane PMem hardware on each socket. For example, on a two socket system the mounted DCPMM directories should appear as /mnt/pmem0 and /mnt/pmem1. Correctly installed Optane PMem must be formatted and mounted on every cluster worker node.
-   
-      // use impctl command to show topology and dimm info of DCPM
-      impctl show -topology
-      impctl show -dimm
-      // provision dcpm in app direct mode
-      ipmctl create -goal PersistentMemoryType=AppDirect
-      // reboot system to make configuration take affect
-      reboot
-      // check capacity provisioned for app direct mode(AppDirectCapacity)
-      impctl show -memoryresources
-      // show the DCPM region information
-      impctl show -region
-      // create namespace based on the region, multi namespaces can be created on a single region
-      ndctl create-namespace -m fsdax -r region0
-      ndctl create-namespace -m fsdax -r region1
-      // format pmem*
-      mkfs.ext4 /dev/pmem0  
-      mkfs.ext4 /dev/pmem1 
-      // show the created namespaces
-      fdisk -l
-      // create and mount file system
-      mount -o dax /dev/pmem0 /mnt/pmem0
-      mount -o dax /dev/pmem1 /mnt/pmem1
+# RDD Cache K-Means User Guide
 
-In this case file systems are generated for 2 numa nodes, which can be checked by "numactl --hardware". For a different number of numa nodes, a corresponding number of namespaces should be created to assure correct file system paths mapping to numa nodes.
+## Prerequisites
+Before configuring in Spark to use Optane PMem cache, you need to make sure the following:
 
-Please valiate Optane PMem mount in DAX mode like below. You should find **DAX** listed in mode list for each PMEM entry like below:
+Optane PMem hardwares are installed, formatted and mounted correctly on every cluster worker node with AppDirect mode(refer [guide](https://software.intel.com/en-us/articles/quick-start-guide-configure-intel-optane-dc-persistent-memory-on-linux)). You will get a mounted directory to use if you have done this. Usually, the Optane PMem on each socket will be mounted as a directory. For example, on a two sockets system, we may get two mounted directories named `/mnt/pmem0` and `/mnt/pmem1`.
 
-      #mount | grep dax 
-      /dev/pmem0 on /mnt/pmem0 type ext4 (rw,relatime,dax)
-      /dev/pmem1 on /mnt/pmem1 type ext4 (rw,relatime,dax) 
+Here is a quick guide to enable AppDirect mode for two socket system. Please run the below commands by superuser.
+```
+ipmctl create -goal PersistentMemoryType=AppDirect
+reboot
+ndctl create-namespace -m fsdax -r region0
+ndctl create-namespace -m fsdax -r region1
+mkfs.ext4 /dev/pmem0
+mkfs.ext4 /dev/pmem1
+mount -o dax /dev/pmem0 /mnt/pmem0
+mount -o dax /dev/pmem1 /mnt/pmem1
+```
 
-## Install Memkind library
-Memkind library is required to be installed on every cluster worker node. Please use the latest Memkind version. Compile Memkind based on your system.
+Please validate Optane PMem mount in DAX mode like below. You should find **DAX** listed in mode list for each PMEM entry like below:
+```
+mount | grep dax 
+```
 
-Please download Memkind from the [official website](https://github.com/memkind/memkind). Please install required dependencies list in [Memkind website](https://github.com/memkind/memkind#dependencies) and build it from source following the [instructions](https://github.com/memkind/memkind#building-and-installing)
+The output should looks like as below:
+```
+/dev/pmem0 on /mnt/pmem0 type ext4 (rw,relatime,dax)
+/dev/pmem1 on /mnt/pmem1 type ext4 (rw,relatime,dax) 
+```
 
-Please copy the built so under the folder.
+[Memkind](http://memkind.github.io/memkind/) library must be installed on every cluster worker node. Please use the latest Memkind version. You can compile Memkind based on your system and put the file to `/lib64/` directory in each worker node in cluster. Memkind library depends on libnuma at the runtime. You need to make sure libnuma already exists in worker node system. To build memkind lib from source, you can:
+```
+git clone https://github.com/memkind/memkind
+cd memkind
+./autogen.sh
+./configure
+make
+sudo make install
+sudo cp -r /usr/local/lib/* /lib64 
+```
 
-      sudo cp -r /usr/local/lib/* /lib64 
+## Configure for NUMA
+To achieve the optimum performance, we need to configure NUMA for binding executor to NUMA node and try access the right Optane PMem device on the same NUMA node. You need install numactl on each worker node. For example, on CentOS, run following command to install numactl.
 
-Please validate your Memkind is installed properly by checking memkind is under lib64 folder.
+```
+yum install numactl -y
+```
 
-      #ls /lib64 | grep memkind*
-      libmemkind.so 
+# Setup Hadoop 2.7.5
+Please set up Hadoop following [the official website](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html#Installing_Software) and make sure it works.
 
-# Setup Hadoop
-Please set up Hadoop following [the official website](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/SingleCluster.html#Installing_Software)
+It can be validated by running [Hadoop benchmark](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/Benchmarking.html).
 
-Please validate you installation by running [Hadoop benchmark](https://hadoop.apache.org/docs/stable/hadoop-project-dist/hadoop-common/Benchmarking.html) successfully.
+# Install Optane PMem supported Spark
+Please download the Optane PMem supported spark from [Intel-bigdata/spark] (https://github.com/Intel-bigdata/spark/tree/branch-2.4.4-oap-0.8).
 
-# Install Spark
-Please refer to the supported Spark version in [Link] (https://github.com/Intel-bigdata/Solution_navigator/blob/master/storage_mem_extension/storage-memory-extension-user-guide.md#prerequisites)
+Please download OAP project from [Intel-bigdata/OAP] (https://github.com/Intel-bigdata/OAP/tree/branch-0.8-spark-2.4.x).
 
-# Update Spark runtime configurations
-Build Spark from source to enable numa-binding support
+To build the Optane PMem supported spark, you can run below commands:
+```
+cd ${OAP_CODE_HOME}
+mvn install -Ppersistent-memory -DskipTests
 
-       https://github.com/Intel-bigdata/OAP/blob/branch-0.7-spark-2.4.x/docs/Developer-Guide.md#enable-numa-binding-for-dcpmm-in-spark
+cd ${SPAKR_CODE_HOME}
+./dev/make-distribution.sh --name custom-spark --tgz -Phadoop-2.7 -Phive -Phive-thriftserver -Pyarn
+```
+After the building process run to the end, a tarball named spark-2.4.4-bin-custom-spark.tgz will generated under spark source code directory. Please unzip it.
+```
+tar -zxvf spark-2.4.4-bin-custom-spark.tgz
+```
 
-# Setup K-means Workload
+Configure the environment variables for spark. Please add below command at the end of /home/${USER_NAME}/.bashrc.
+```
+export SPARK_HOME=${OPTANE_PMEM_SUPPORTED_SPARK_PATH}
+export HADOOP_HOME=${YOUR_HADOOP_PATH}
+export HADOOP_CONF_DIR=${HADOOP_HOME}/etc/hadoop 
+```
+Assume you have setup HADOOP_HOME and HADOOP_CONF_DIR when installing hadoop. Spark need also these two configuration.
 
-Please download HiBench from [HiBench webpage](https://github.com/intel-hadoop/HiBench.git).
+# Setup HiBench Benchmark Suite
+Please download HiBench from [HiBench webpage](https://github.com/intel-hadoop/HiBench.git). You can run the following command to build HiBench.
+```
+mvn -Psparkbench -Dspark=2.4.4 -Dscala=2.11 clean package
+```
 
-Modify pom.xml under sparkbench, sparkbench/streaming and sparkbench/structuredStreaming/ folders to add support of spark2.4.
-
-Update files to include configuration of StorageLevel and initMode
-in HiBench-master\sparkbench\ml\src\main\scala\com\intel\sparkbench\ml\DenseKMeans.scala file do follow modifications:
-
-    import org.apache.spark.storage.StorageLevel
-    case class Params(
-          input: String = null,
-          k: Int = -1,
-          numIterations: Int = 10,
-          initializationMode: InitializationMode = Parallel,
-          storageLevel: Int = 3)
-    opt[Int]("storageLevel")
-            .required()
-            .text(s"storage level, required")
-            .action((x, c) => c.copy(storageLevel = x))
-
-in HiBench-master\bin\functions\hibench_prop_env_mapping.py file add following part:
-
-    K_INIT_MODE="hibench.kmeans.initMode",
-    K_STORAGE_LEVEL="hibench.kmeans.storageLevel" 
-
-in HiBench-master\bin\workloads\ml\kmeans\spark\run.sh file add parameters like bellow:
-
-    run_spark_job com.intel.hibench.sparkbench.ml.DenseKMeans -k $K --numIterations $MAX_ITERATION --storageLevel $K_STORAGE_LEVEL --initMode $K_INIT_MODE $INPUT_HDFS/samples
- 
-Compile Highbench.
-
-Configure ${HiBench_Home}/conf/spark.conf, set the hibench.spark.home to the spark you installed.
-
-Configure ${HiBench_Home}/conf/workloads/ml, the num_of_samples correspond to different size of data set, set to generate relative size of data.
- 
-Specify the dateset in ${HiBench_Home}/conf/hibench.conf
- 
-Run ${HiBench_Home}/bin/workloads/ml/kmeans/prepare/prepare.sh to generate data
+Please follow the guide [run-sparkbench] (https://github.com/Intel-bigdata/HiBench/blob/master/docs/run-sparkbench.md) to configure the hadoop.conf and spark.conf in HiBench.
 
 ## Running Spark Kmeans
 See [https://github.com/Intel-bigdata/HiBench/blob/master/docs/run-sparkbench.md] 
 
-Configure HiBench with Spark PMem storage level.
+Additional configurations to enabling Optane PMem using HiBench. Please add following configurations in `conf/spark.conf`
+```
+spark.memory.pmem.initial.path /mnt/pmem0,/mnt/pmem1
+spark.memory.pmem.initial.size ${OPTANE_PMEM_CAPACITY_FOR_SINGLE_SOCKET}
+spark.yarn.numa.enabled true
+spark.yarn.numa.num 2
+```
+Specify spark storage level in `conf/workloads/ml/kmeans.conf
+```
+hibench.kmeans.storage.level PMEM_AND_DISK
+```
+In this case, the machine has two numa node which can be checked by "numactl --hardware" and these two numa node is associate with /mnt/pmem0 and /mnt/pmem1 for each. 
+
+For a different number of numa nodes, You shoud try to setup Optane PMem AppDirect mode with more namespace, see the previous chapter and link.
+
+If you want to run other storage level like OFF_HEAP. Please remove previous Optane PMem related configurations and follow the spark official doc [Which Storage Level to Choose] (https://spark.apache.org/docs/latest/rdd-programming-guide.html#which-storage-level-to-choose)
+
+You can add the spark conf which specify to other storage level in `conf/spark.conf` and specify spark storage level in `conf/workloads/ml/kmeans.conf`.
+
+
+To change the input data size, you can set `hibench.scale.profile` in `conf/hibench.conf`. Available values are tiny, small, large, huge, gigantic and bigdata. The definition of these profiles can be found in the workload's conf file `conf/workloads/ml/kmeans.conf`
+ 
+To run kmeans workload：
+```
+bin/workloads/ml/kmeans/prepare/prepare.sh
+bin/workloads/ml/kmeans/spark/run.sh
+```
+
