@@ -18,7 +18,7 @@ spark.yarn.numa.num [Your numa node number]
 
 ## Use Optane PMem to cache data
 
-There's a new StorageLevel: PMEM_AND_DISK being added to cache data to Optane PMem, at the places you previously cache/persist data to memory, use PMEM_AND_DISK t0 substitute the previous StorageLevel, data will be cached to Optane PMem.
+There's a new StorageLevel: PMEM_AND_DISK being added to cache data to Optane PMem, at the places you previously cache/persist data to memory, use PMEM_AND_DISK to substitute the previous StorageLevel, data will be cached to Optane PMem.
 ```
 persist(StorageLevel.PMEM_AND_DISK)
 ```
