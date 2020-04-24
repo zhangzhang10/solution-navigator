@@ -9,17 +9,19 @@ Please refer to documentation at ["Quick Start Guide: Provision Intel® Optane
 ## Configuration
 
 To enable rdd cache on Intel Optane PMem, you need add the following configurations:
-
-    spark.memory.pmem.initial.path [Your Optane PMem paths seperate with comma]
-    spark.memory.pmem.initial.size [Your Optane PMem size in GB]
-    spark.yarn.numa.enabled true
-    spark.yarn.numa.num [Your numa node number]
+```
+spark.memory.pmem.initial.path [Your Optane PMem paths seperate with comma]
+spark.memory.pmem.initial.size [Your Optane PMem size in GB]
+spark.yarn.numa.enabled true
+spark.yarn.numa.num [Your numa node number]
+```
 
 ## Use Optane PMem to cache data
 
 There's a new StorageLevel: PMEM_AND_DISK being added to cache data to Optane PMem, at the places you previously cache/persist data to memory, use PMEM_AND_DISK t0 substitute the previous StorageLevel, data will be cached to Optane PMem.
-
-    persist(StorageLevel.PMEM_AND_DISK)
+```
+persist(StorageLevel.PMEM_AND_DISK)
+```
 
 ## Run K-means benchmark
 
