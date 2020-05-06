@@ -102,13 +102,15 @@ Please download Spark 2.3.2 from official [website](http://archive.apache.org/di
 
 ## Install OAP for Spark 2.3.2
 
+Install and configure maven [3.6.3](http://maven.apache.org/docs/3.6.3/release-notes.html) properly.
+
 Build OAP fron source:
 ```
 git clone https://github.com/Intel-bigdata/OAP
 cd OAP
 git checkout OPEN_SOURCE_VMEMCACHE_SPARK_2.3.2_PREVIEW
 cd script
-./apply_patch_to_spark.sh -v $SPAKR_VERSION
+./apply_patch_to_spark.sh -v v2.3.2
 cd ..
 mvn clean package -Pvmemcache,numa-binding -DskipTests
 ```
@@ -117,27 +119,33 @@ Copy target/oap-1.0.0-SNAPSHOT-with-spark-2.3.2.jar to master sever.
 ## Generate TPC-DS data
 
 For Spark2.3.2, we use spark-sql-perf_2.11-0.4.11-SNAPSHOT.jar to do data generation and scripts are available for leverage.
+
 1. Update Spark conf to include this jar file.
 vi spark-defaults.conf(use full path to spark-sql-perf jar)
+
 ```
 spark.files                        file:///home/spark-sql/extra-jars/spark-sql-perf_2.11-0.4.11-SNAPSHOT.jar
 spark.executor.extraClassPath      ./spark-sql-perf_2.11-0.4.11-SNAPSHOT.jar
 spark.driver.extraClassPath        file:///home/spark-sql/extra-jars/spark-sql-perf_2.11-0.4.11-SNAPSHOT.jar
 ```
-2. update data_gen_*.scala to set correct dataset and data format
+2. TPCDS kit needs to be installed on all cluster executor nodes under the same path. It can be found [here](https://github.com/databricks/tpcds-kit).
+
+3. update data_gen*.scala to set correct dataset and data format.
 
 ```
 val scale = 3072  (data set: GB)
 val format = "parquet"  (data format)
 val codec = "snappy"   (data compression codec)
 val namenode = "hostname"  (master's hostname)
+val tables = new Tables(spark.sqlContext, s"FULL-PATH-To-TPCDS-Toolkit", scale)
 ```
 
-3. update SPARK_HOME and executor settings in run_data_gen.sh, run ./run_data_gen.sh to start generate data.
+4. update SPARK_HOME and executor settings in run_data_gen.sh, run ./run_data_gen.sh to start generate data.
 
 ## Enable OAP cache in Spark 2.3.2
 
 For more details, you can refer this [doc](https://github.com/Intel-bigdata/OAP/blob/OPEN_SOURCE_VMEMCACHE_SPARK_2.3.2_PREVIEW/doc/DCPMM-Cache-Support-in-OAP.pdf)
+
 1. modify spark-defaults.conf to include oap jar as extension
 ```
 spark.sql.extensions              org.apache.spark.sql.OapExtensions
@@ -146,27 +154,31 @@ spark.executor.extraClassPath      ./oap-1.0.0-SNAPSHOT-with-spark-2.3.2.jar
 spark.driver.extraClassPath        file:///home/spark-sql/extra-jars/oap-1.0.0-SNAPSHOT-with-spark-2.3.2.jar
 
 ```
+
 2. add OAP related parameters in spark-default.conf
 
 For parquet,
 ```
 spark.sql.oap.parquet.enable              true
 spark.sql.oap.parquet.data.cache.enable   true
+spark.sql.oap.cache.guardian.memory.size  20g
 spark.sql.oap.fiberCache.memory.manager   self
 spark.oap.cache.strategy                  vmem
-spark.sql.oap.fiberCache.persistent.memory.initial.size     *g
-spark.memory.offHeap.size                            *g
+spark.sql.oap.cache.guardian.free.thread.nums    4
+spark.sql.oap.fiberCache.persistent.memory.initial.size     490g (take /mnt/pmem0 has 499G space as example)
 ```
 For ORC,
 ```
 spark.sql.oap.orc.enable             true
 spark.sql.orc.copyBatchToSpark       true
 spark.sql.oap.orc.data.cache.enable  true
+spark.sql.oap.cache.guardian.memory.size  20g
+spark.sql.oap.fiberCache.memory.manager   self
 spark.oap.cache.strategy                  vmem
-spark.sql.oap.fiberCache.persistent.memory.initial.size     *g
-spark.memory.offHeap.size                            *g
-
+spark.sql.oap.cache.guardian.free.thread.nums    4
+spark.sql.oap.fiberCache.persistent.memory.initial.size     490g (take /mnt/pmem0 has 499G space as example)
 ```
+
 3. enable numa-binding in spark-default.conf
 ```
 spark.yarn.numa.enable    true
@@ -189,6 +201,12 @@ put persisten-memory.xml under $SPARK_HOME/conf.
 73727 Jps
 
 ```
+For cluster environment, you can check overall launch status of executors using "yarn node -list" with output as following:
+```
+Total Nodes:1
+         Node-Id             Node-State Node-Http-Address       Number-of-Running-Containers
+     sr416:45161                RUNNING        sr416:8042                                  3
+```
 
 ## Execute target queries
 
@@ -197,7 +215,7 @@ We have provided a python script for execution, update it based on your $SPARK_H
 ```
 spark_home = 'full_path_to_spark-2.3.2'
 beeline_args = '-u jdbc:hive2://hostname-master:10001 -n * -p *'
-database_name = 'tpcds2048'
+database_name = 'tpcds3072'
 ```
 Then kickoff the execution by run './run_beeline.py'.
 
