@@ -1,0 +1,15 @@
+. Build sprk-sql-perf
+  git clone https://github.com/databricks/spark-sql-perf.git 
+  sbt +package
+  
+. Build TPCH-kit, need to check out the specific branch to enable dbgen to stdout so spark can read the data
+    . git clone https://github.com/databricks/tpch-dbgen && cd tpch-dbgen &&  git checkout 0469309147b42abac8857fa61b4cf69a6d3128a8
+    . make clean && make
+. TPCH datagen
+    . Update tpch_datagen.scala(below) with required settings
+      usually you may need to change scaleFactor, dbgenDir and also numberPartitions
+    . Generate the data with spark-shell and spark-sql-perf jar, note you may need to choose the right scala version based on your spark version.
+      at tpch_datagen.scala | spark-shell --master local[10] --jars target/scala-2.12/spark-sql-perf_2.12-0.5.1-SNAPSHOT.jar
+      ased on your spark metastore settings, different metadata will be generated
+        . For hive server: metadata will be stored mysql
+        . If no hive server configured, spark will automatically store the metadata to metastore_db folder
