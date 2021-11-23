@@ -1,0 +1,4 @@
+[debug] [objsets-build-build] Classpath dependencies List()
+[debug] [objsets-build-build] Dependencies from configurations List()
+[debug] Bloop wrote the configuration of project 'objsets-build-build' to '/home/xgboost/workspace/objsets/project/project/.bloop/objsets-build-build.json'
+[success] Generated .bloop/objsets-build-build.json

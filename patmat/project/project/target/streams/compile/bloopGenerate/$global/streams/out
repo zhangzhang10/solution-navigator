@@ -1,0 +1,4 @@
+[0m[[0m[0mdebug[0m] [0m[0m[patmat-build-build] Classpath dependencies List()[0m
+[0m[[0m[0mdebug[0m] [0m[0m[patmat-build-build] Dependencies from configurations List()[0m
+[0m[[0m[0mdebug[0m] [0m[0mBloop wrote the configuration of project 'patmat-build-build' to '/home/xgboost/workspace/patmat/project/project/.bloop/patmat-build-build.json'[0m
+[0m[[0m[32msuccess[0m] [0m[0mGenerated .bloop/patmat-build-build.json[0m
